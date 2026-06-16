@@ -6,35 +6,29 @@ import random
 random.seed(42)
 np.random.seed(42)
 
-CARRIERS = ["TransBrasil", "LogFast", "NovaCargo", "SpeedLog", "UniTrans"]
+# 1. TRANSPORTADORAS REAIS DA SUA TABELA
+CARRIERS = ["RotaMax", "ViaCargo", "FlashLog"]
 STATUSES = ["Em Trânsito", "Entregue", "Atrasado", "Aguardando Coleta", "Devolvido"]
 STATUS_WEIGHTS = [0.35, 0.40, 0.12, 0.10, 0.03]
+
+# 2. REGIÕES DA TABELA MAPEADAS COM COORDENADAS CENTRAIS PARA O MAPA NÃO QUEBRAR
 ORIGINS = [
-    ("São Paulo", -23.5505, -46.6333),
-    ("Rio de Janeiro", -22.9068, -43.1729),
-    ("Belo Horizonte", -19.9167, -43.9345),
-    ("Curitiba", -25.4297, -49.2711),
-    ("Porto Alegre", -30.0346, -51.2177),
-    ("Brasília", -15.7801, -47.9292),
-    ("Salvador", -12.9714, -38.5014),
-    ("Fortaleza", -3.7172, -38.5433),
-    ("Manaus", -3.1190, -60.0217),
-    ("Recife", -8.0476, -34.8770),
-]
-DESTINATIONS = [
-    ("Campinas", -22.9099, -47.0626),
-    ("Florianópolis", -27.5954, -48.5480),
-    ("Goiânia", -16.6869, -49.2648),
-    ("Belém", -1.4558, -48.4902),
-    ("Maceió", -9.6658, -35.7350),
-    ("Natal", -5.7945, -35.2110),
-    ("Teresina", -5.0920, -42.8034),
-    ("Campo Grande", -20.4428, -54.6460),
-    ("João Pessoa", -7.1153, -34.8641),
-    ("Vitória", -20.3155, -40.3128),
+    ("Sudeste", -21.7642, -43.3496),
+    ("Sul", -27.5954, -48.5480),
+    ("Nordeste", -8.0476, -34.8770),
+    ("Norte", -3.1190, -60.0217),
+    ("Centro-Oeste", -15.7801, -47.9292),
 ]
 
-PRODUCT_CATEGORIES = ["Eletrônicos", "Vestuário", "Alimentos", "Farmacêutico", "Automotivo", "Móveis", "Cosméticos"]
+DESTINATIONS = [
+    ("Sudeste", -22.9099, -47.0626),
+    ("Sul", -25.4297, -49.2711),
+    ("Nordeste", -5.7945, -35.2110),
+    ("Norte", -1.4558, -48.4902),
+    ("Centro-Oeste", -16.6869, -49.2648),
+]
+
+PRODUCT_CATEGORIES = ["Geral", "Especial"]
 
 def generate_orders(n=200):
     now = datetime.now()
@@ -46,16 +40,21 @@ def generate_orders(n=200):
         carrier = random.choice(CARRIERS)
         days_ago = random.randint(0, 30)
         created = now - timedelta(days=days_ago, hours=random.randint(0, 23))
-        sla_days = random.randint(2, 7)
+        
+        # Ajustando prazos para ficarem parecidos com os da tabela (entre 2 e 6 dias)
+        sla_days = random.randint(2, 6)
         expected = created + timedelta(days=sla_days)
+        
         if status == "Entregue":
-            delivered = created + timedelta(days=random.randint(1, sla_days + 2))
+            # Simula algumas entregas dentro e outras fora do prazo
+            delivered = created + timedelta(days=random.randint(1, sla_days + 3))
         else:
             delivered = None
+            
         weight = round(random.uniform(0.5, 50.0), 2)
         value = round(random.uniform(50, 5000), 2)
-        lat_noise = random.uniform(-2, 2)
-        lon_noise = random.uniform(-2, 2)
+        lat_noise = random.uniform(-1, 1)
+        lon_noise = random.uniform(-1, 1)
         rows.append({
             "id": f"PED-{10000 + i}",
             "status": status,
