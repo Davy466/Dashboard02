@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
@@ -17,21 +16,22 @@ st.set_page_config(
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.title("🚚 LogísticaIQ")
-    st.caption("Dashboard de Monitoramento em Tempo Real")
+    st.caption("Dashboard da atividade logística")
     st.divider()
 
     st.subheader("Filtros")
-    # ATUALIZADO: Nomes reais da tabela da atividade
     selected_carriers = st.multiselect(
         "Transportadoras",
         options=["RotaMax", "ViaCargo", "FlashLog"],
         default=["RotaMax", "ViaCargo", "FlashLog"],
     )
+
     selected_statuses = st.multiselect(
         "Status",
         options=["Em Trânsito", "Entregue", "Atrasado", "Aguardando Coleta", "Devolvido"],
         default=["Em Trânsito", "Entregue", "Atrasado", "Aguardando Coleta", "Devolvido"],
     )
+
     date_range = st.slider("Período (dias atrás)", min_value=1, max_value=30, value=30)
 
     st.divider()
@@ -43,7 +43,7 @@ with st.sidebar:
 # ── Data Loading ─────────────────────────────────────────────────────────────
 @st.cache_data(ttl=60)
 def load_data():
-    orders = generate_orders(300)
+    orders = generate_orders(10)
     daily = generate_daily_metrics(30)
     return orders, daily
 
@@ -53,15 +53,19 @@ cutoff = datetime.now() - timedelta(days=date_range)
 orders = orders_raw[
     (orders_raw["carrier"].isin(selected_carriers)) &
     (orders_raw["status"].isin(selected_statuses)) &
-    (orders_raw["created_at"] >= cutoff)
+    (pd.to_datetime(orders_raw["created_at"]) >= cutoff)
 ].copy()
+
+if orders.empty:
+    st.warning("Nenhum pedido encontrado com os filtros atuais.")
+    st.stop()
 
 alerts = generate_alerts(orders_raw)
 carrier_perf = carrier_performance(orders)
 
 # ── Header ───────────────────────────────────────────────────────────────────
 st.title("📦 Dashboard de Monitoramento Logístico")
-st.caption(f"Exibindo {len(orders):,} pedidos | Período: últimos {date_range} dias")
+st.caption(f"Exibindo {len(orders)} pedidos | Período: últimos {date_range} dias")
 
 # ── KPI Cards ────────────────────────────────────────────────────────────────
 total = len(orders)
@@ -76,16 +80,15 @@ avg_weight = orders["weight_kg"].mean() if total > 0 else 0
 
 col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
-    st.metric("📦 Total de Pedidos", f"{total:,}", delta=f"+{max(0, total - int(total*0.93)):,} vs mês ant.")
+    st.metric("📦 Total de Pedidos", f"{total}")
 with col2:
-    st.metric("🚛 Em Trânsito", f"{in_transit:,}")
+    st.metric("🚛 Em Trânsito", f"{in_transit}")
 with col3:
-    st.metric("✅ Entregues", f"{delivered:,}", delta=f"{on_time_pct}% no prazo")
+    st.metric("✅ Entregues", f"{delivered}", delta=f"{on_time_pct}% no prazo")
 with col4:
-    st.metric("⏰ Atrasados", f"{delayed:,}",
-              delta=f"+{max(0, delayed - int(delayed*0.9)):,} vs mês ant.", delta_color="inverse")
+    st.metric("⏰ Atrasados", f"{delayed}")
 with col5:
-    st.metric("💰 Valor Total", f"R$ {total_value:,.0f}")
+    st.metric("💰 Valor Total", f"R$ {total_value:,.2f}")
 
 st.divider()
 
@@ -108,21 +111,22 @@ with col_left:
     fig_trend.add_trace(go.Scatter(
         x=daily_df["date"], y=daily_df["delivered"],
         name="Entregues", mode="lines+markers",
-        line=dict(color="#22c55e", width=2),
-        fill="tozeroy", fillcolor="rgba(34,197,94,0.08)"
+        line=dict(width=2),
+        fill="tozeroy"
     ))
     fig_trend.add_trace(go.Scatter(
         x=daily_df["date"], y=daily_df["in_transit"],
         name="Em Trânsito", mode="lines+markers",
-        line=dict(color="#3b82f6", width=2),
+        line=dict(width=2),
     ))
     fig_trend.add_trace(go.Scatter(
         x=daily_df["date"], y=daily_df["delayed"],
         name="Atrasados", mode="lines+markers",
-        line=dict(color="#ef4444", width=2, dash="dot"),
+        line=dict(width=2, dash="dot"),
     ))
     fig_trend.update_layout(
-        height=280, margin=dict(l=0, r=0, t=10, b=0),
+        height=280,
+        margin=dict(l=0, r=0, t=10, b=0),
         legend=dict(orientation="h", y=1.12),
         hovermode="x unified",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -134,6 +138,7 @@ with col_right:
     st.subheader("🥧 Distribuição por Status")
     status_counts = orders["status"].value_counts().reset_index()
     status_counts.columns = ["status", "count"]
+
     color_map = {
         "Em Trânsito": "#3b82f6",
         "Entregue": "#22c55e",
@@ -142,6 +147,7 @@ with col_right:
         "Devolvido": "#8b5cf6",
     }
     colors = [color_map.get(s, "#94a3b8") for s in status_counts["status"]]
+
     fig_pie = go.Figure(go.Pie(
         labels=status_counts["status"],
         values=status_counts["count"],
@@ -151,7 +157,8 @@ with col_right:
         textfont_size=11,
     ))
     fig_pie.update_layout(
-        height=280, margin=dict(l=0, r=0, t=10, b=0),
+        height=280,
+        margin=dict(l=0, r=0, t=10, b=0),
         showlegend=False,
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -174,6 +181,7 @@ with tab_map1:
             columns={"dest_lat": "lat", "dest_lon": "lon"}
         ).assign(tipo="Destino"),
     ])
+
     fig_scatter = px.scatter_geo(
         all_points,
         lat="lat",
@@ -208,31 +216,35 @@ with tab_map1:
 with tab_map2:
     transit = orders[orders["status"] == "Em Trânsito"].head(60).copy()
     fig_lines = go.Figure()
+
     for _, row in transit.iterrows():
         fig_lines.add_trace(go.Scattergeo(
             lon=[row["origin_lon"], row["dest_lon"]],
             lat=[row["origin_lat"], row["dest_lat"]],
             mode="lines",
-            line=dict(width=1, color="rgba(59,130,246,0.4)"),
+            line=dict(width=1),
             showlegend=False,
             hoverinfo="skip",
         ))
-    fig_lines.add_trace(go.Scattergeo(
-        lon=transit["origin_lon"].tolist(),
-        lat=transit["origin_lat"].tolist(),
-        mode="markers",
-        marker=dict(size=6, color="#f59e0b", opacity=0.9),
-        name="Origem",
-        text=transit["origin_city"],
-    ))
-    fig_lines.add_trace(go.Scattergeo(
-        lon=transit["dest_lon"].tolist(),
-        lat=transit["dest_lat"].tolist(),
-        mode="markers",
-        marker=dict(size=6, color="#22c55e", opacity=0.9),
-        name="Destino",
-        text=transit["dest_city"],
-    ))
+
+    if not transit.empty:
+        fig_lines.add_trace(go.Scattergeo(
+            lon=transit["origin_lon"].tolist(),
+            lat=transit["origin_lat"].tolist(),
+            mode="markers",
+            marker=dict(size=6, opacity=0.9),
+            name="Origem",
+            text=transit["origin_city"],
+        ))
+        fig_lines.add_trace(go.Scattergeo(
+            lon=transit["dest_lon"].tolist(),
+            lat=transit["dest_lat"].tolist(),
+            mode="markers",
+            marker=dict(size=6, opacity=0.9),
+            name="Destino",
+            text=transit["dest_city"],
+        ))
+
     fig_lines.update_layout(
         height=480,
         margin=dict(l=0, r=0, t=10, b=0),
@@ -267,7 +279,6 @@ with col_a:
         x=carrier_perf["carrier"],
         y=carrier_perf["on_time_rate"],
         name="% No Prazo",
-        marker_color="#22c55e",
         text=[f"{v}%" for v in carrier_perf["on_time_rate"]],
         textposition="outside",
     ))
@@ -275,7 +286,6 @@ with col_a:
         x=carrier_perf["carrier"],
         y=carrier_perf["delay_rate"],
         name="% Atrasos",
-        marker_color="#ef4444",
         text=[f"{v}%" for v in carrier_perf["delay_rate"]],
         textposition="outside",
     ))
@@ -294,21 +304,21 @@ with col_b:
     st.subheader("📊 Volume por Categoria de Produto")
     cat_counts = orders["category"].value_counts().reset_index()
     cat_counts.columns = ["category", "count"]
+
     fig_cat = px.bar(
         cat_counts,
         x="count",
         y="category",
         orientation="h",
-        color="count",
-        color_continuous_scale="Blues",
         labels={"count": "Pedidos", "category": ""},
     )
     fig_cat.update_layout(
         height=300,
         margin=dict(l=0, r=0, t=10, b=0),
-        coloraxis_showscale=False,
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
+        xaxis_title="Pedidos",
+        yaxis_title="",
     )
     st.plotly_chart(fig_cat, use_container_width=True)
 
@@ -320,14 +330,15 @@ col_r1, col_r2 = st.columns(2)
 with col_r1:
     st.subheader("💵 Receita Operacional Diária (R$)")
     avg_rev = daily_df["revenue"].mean()
+
     fig_rev = go.Figure(go.Bar(
         x=daily_df["date"],
         y=daily_df["revenue"],
-        marker_color="#6366f1",
         name="Receita",
     ))
     fig_rev.add_hline(
-        y=avg_rev, line_dash="dot", line_color="#f59e0b",
+        y=avg_rev,
+        line_dash="dot",
         annotation_text=f"Média R$ {avg_rev:,.0f}",
         annotation_position="top right"
     )
@@ -346,7 +357,6 @@ with col_r2:
         carrier_perf,
         values="total",
         names="carrier",
-        color_discrete_sequence=px.colors.qualitative.Set2,
         hole=0.4,
     )
     fig_vol.update_layout(
@@ -364,17 +374,20 @@ st.subheader("🗒️ Listagem de Pedidos")
 
 col_s1, col_s2 = st.columns([3, 1])
 with col_s1:
-    search = st.text_input("🔍 Buscar por ID, Origem ou Destino",
-                           placeholder="Ex: PED-10042, Sudeste...")
+    search = st.text_input(
+        "🔍 Buscar por ID, Origem ou Destino",
+        placeholder="Ex: PED-301, Sudeste..."
+    )
 with col_s2:
     sort_col = st.selectbox("Ordenar por", ["created_at", "value_brl", "weight_kg"], index=0)
 
 display_df = orders.copy().sort_values(sort_col, ascending=False)
+
 if search:
     mask = (
-        display_df["id"].str.contains(search, case=False, na=False) |
-        display_df["origin_city"].str.contains(search, case=False, na=False) |
-        display_df["dest_city"].str.contains(search, case=False, na=False)
+        display_df["id"].astype(str).str.contains(search, case=False, na=False) |
+        display_df["origin_city"].astype(str).str.contains(search, case=False, na=False) |
+        display_df["dest_city"].astype(str).str.contains(search, case=False, na=False)
     )
     display_df = display_df[mask]
 
@@ -400,7 +413,7 @@ table_data = display_df[[
 }).head(100)
 
 st.dataframe(table_data, use_container_width=True, height=380)
-st.caption(f"Exibindo até 100 de {len(display_df):,} pedidos filtrados")
+st.caption(f"Exibindo até 100 de {len(display_df)} pedidos filtrados")
 
 # ── Bottom KPIs ───────────────────────────────────────────────────────────────
 st.divider()
@@ -410,8 +423,7 @@ with col_f1:
 with col_f2:
     st.metric("⚖️ Peso Médio", f"{avg_weight:.1f} kg")
 with col_f3:
-    st.metric("🔄 Taxa de Devolução",
-              f"{returned/total*100:.1f}%" if total > 0 else "0%")
+    st.metric("🔄 Taxa de Devolução", f"{(returned/total*100):.1f}%" if total > 0 else "0%")
 with col_f4:
     best_carrier = carrier_perf.loc[carrier_perf["on_time_rate"].idxmax(), "carrier"] if len(carrier_perf) > 0 else "—"
     st.metric("🥇 Melhor Transportadora", best_carrier)
