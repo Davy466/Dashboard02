@@ -21,10 +21,11 @@ with st.sidebar:
     st.divider()
 
     st.subheader("Filtros")
+    # ATUALIZADO: Nomes reais da tabela da atividade
     selected_carriers = st.multiselect(
         "Transportadoras",
-        options=["TransBrasil", "LogFast", "NovaCargo", "SpeedLog", "UniTrans"],
-        default=["TransBrasil", "LogFast", "NovaCargo", "SpeedLog", "UniTrans"],
+        options=["RotaMax", "ViaCargo", "FlashLog"],
+        default=["RotaMax", "ViaCargo", "FlashLog"],
     )
     selected_statuses = st.multiselect(
         "Status",
@@ -160,7 +161,7 @@ with col_right:
 st.divider()
 
 # ── Map of Active Routes ──────────────────────────────────────────────────────
-st.subheader("🗺️ Mapa de Rotas e Concentração de Pedidos")
+st.subheader("🗺️ Mapa de Rotas e Concentração por Região")
 
 tab_map1, tab_map2 = st.tabs(["Pontos de Origem/Destino", "Rotas em Trânsito"])
 
@@ -363,8 +364,8 @@ st.subheader("🗒️ Listagem de Pedidos")
 
 col_s1, col_s2 = st.columns([3, 1])
 with col_s1:
-    search = st.text_input("🔍 Buscar por ID, origem ou destino",
-                           placeholder="Ex: PED-10042, São Paulo...")
+    search = st.text_input("🔍 Buscar por ID, Origem ou Destino",
+                           placeholder="Ex: PED-10042, Sudeste...")
 with col_s2:
     sort_col = st.selectbox("Ordenar por", ["created_at", "value_brl", "weight_kg"], index=0)
 
@@ -389,8 +390,8 @@ table_data = display_df[[
     "id": "Pedido",
     "status": "Status",
     "carrier": "Transportadora",
-    "origin_city": "Origem",
-    "dest_city": "Destino",
+    "origin_city": "Região Origem",
+    "dest_city": "Região Destino",
     "category": "Categoria",
     "weight_fmt": "Peso",
     "value_fmt": "Valor",
