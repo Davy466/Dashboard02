@@ -18,7 +18,7 @@ def format_brl(value):
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.title("🚚 LogísticaIQ")
+    st.title("Logística")
     st.caption("Dashboard da atividade logística")
     st.divider()
 
@@ -33,14 +33,14 @@ with st.sidebar:
     selected_statuses = st.multiselect(
         "Status",
         options=["Entregue", "Atrasado", "Em Trânsito", "Aguardando Coleta", "Devolvido"],
-        default=["Entregue", "Atrasado", "Em Trânsito", "Aguardando Coleta", "Devolvido"],
+        default=["Entregue", "Atrasado"],
     )
 
     date_range = st.slider("Período (dias atrás)", min_value=1, max_value=30, value=30)
 
     st.divider()
-    st.caption(f"🕐 Atualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-    if st.button("🔄 Atualizar Dados", use_container_width=True):
+    st.caption(f"Atualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+    if st.button("Atualizar Dados", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
@@ -291,7 +291,7 @@ st.plotly_chart(fig_rev, use_container_width=True)
 st.divider()
 
 # ── Tabela ──────────────────────────────────────────────────────────────────
-st.subheader("🗒️ Listagem de Pedidos")
+st.subheader("Listagem de Pedidos")
 
 col_s1, col_s2 = st.columns([3, 1])
 with col_s1:
