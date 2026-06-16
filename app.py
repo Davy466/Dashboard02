@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 from data import generate_orders, generate_daily_metrics, generate_alerts, carrier_performance
 
 st.set_page_config(
-    page_title="LogísticaIQ — Atividade",
-    page_icon="🚚",
+    page_title="Logística Atividade",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -23,6 +23,7 @@ with st.sidebar:
     st.divider()
 
     st.subheader("Filtros")
+
     selected_carriers = st.multiselect(
         "Transportadoras",
         options=["RotaMax", "ViaCargo", "FlashLog"],
@@ -56,6 +57,7 @@ orders_raw["created_at"] = pd.to_datetime(orders_raw["created_at"], errors="coer
 orders_raw["expected_at"] = pd.to_datetime(orders_raw["expected_at"], errors="coerce")
 
 cutoff = datetime.now() - timedelta(days=date_range)
+
 orders = orders_raw[
     (orders_raw["carrier"].isin(selected_carriers)) &
     (orders_raw["status"].isin(selected_statuses)) &
@@ -70,8 +72,8 @@ alerts = generate_alerts(orders_raw)
 carrier_perf = carrier_performance(orders)
 
 # ── Header ───────────────────────────────────────────────────────────────────
-st.title("📦 Dashboard de Monitoramento Logístico")
-st.caption(f"Exibindo {len(orders)} pedidos | Dados fixos da atividade")
+st.title("Dashboard de Monitoramento Logístico")
+st.caption("Dados fixos da atividade com as 10 entregas reais da tabela")
 
 # ── KPI Cards ────────────────────────────────────────────────────────────────
 total = len(orders)
@@ -89,20 +91,20 @@ ticket_medio = orders["value_brl"].mean() if total else 0
 
 col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
-    st.metric("📦 Total de Pedidos", f"{total}")
+    st.metric("Total de Pedidos", f"{total}")
 with col2:
-    st.metric("✅ Entregues", f"{entregues}", delta=f"{taxa_no_prazo}% no prazo")
+    st.metric("Entregues", f"{entregues}", delta=f"{taxa_no_prazo}% no prazo")
 with col3:
-    st.metric("⏰ Atrasados", f"{atrasados}", delta=f"{taxa_atraso}% do total", delta_color="inverse")
+    st.metric("Atrasados", f"{atrasados}", delta=f"{taxa_atraso}% do total", delta_color="inverse")
 with col4:
-    st.metric("⚖️ Peso Médio", f"{peso_medio:.1f} kg")
+    st.metric("Peso Médio", f"{peso_medio:.1f} kg")
 with col5:
-    st.metric("💰 Valor Total", format_brl(valor_total))
+    st.metric("Valor Total", format_brl(valor_total))
 
 st.divider()
 
 # ── Alerts ───────────────────────────────────────────────────────────────────
-with st.expander(f"🔔 Alertas Ativos ({len(alerts)})", expanded=True):
+with st.expander(f"Alertas Ativos ({len(alerts)})", expanded=True):
     for alert in alerts:
         if alert["level"] == "danger":
             st.error(f"{alert['icon']} {alert['message']}")
@@ -111,11 +113,11 @@ with st.expander(f"🔔 Alertas Ativos ({len(alerts)})", expanded=True):
         else:
             st.info(f"{alert['icon']} {alert['message']}")
 
-# ── Trend + Status ──────────────────────────────────────────────────────────
+# ── Tendência + Status ──────────────────────────────────────────────────────
 col_left, col_right = st.columns([2, 1])
 
 with col_left:
-    st.subheader("📈 Tendência de Entregas (30 dias)")
+    st.subheader("Tendência de Entregas (30 dias)")
     fig_trend = go.Figure()
     fig_trend.add_trace(go.Scatter(
         x=daily_df["date"], y=daily_df["delivered"],
@@ -144,10 +146,16 @@ with col_left:
     st.plotly_chart(fig_trend, use_container_width=True)
 
 with col_right:
-    st.subheader("🥧 Distribuição por Status")
+    st.subheader("Distribuição por Status")
     status_counts = orders["status"].value_counts().reset_index()
     status_counts.columns = ["status", "count"]
-    fig_pie = px.pie(status_counts, names="status", values="count", hole=0.5)
+
+    fig_pie = px.pie(
+        status_counts,
+        names="status",
+        values="count",
+        hole=0.5,
+    )
     fig_pie.update_layout(
         height=280,
         margin=dict(l=0, r=0, t=10, b=0),
@@ -159,7 +167,7 @@ with col_right:
 st.divider()
 
 # ── Mapa / Regiões ───────────────────────────────────────────────────────────
-st.subheader("🗺️ Mapa de Rotas e Concentração por Região")
+st.subheader("Mapa de Rotas e Concentração por Região")
 
 all_points = pd.concat([
     orders[["origin_lat", "origin_lon", "carrier", "status", "id"]].rename(
@@ -202,7 +210,7 @@ st.divider()
 col_a, col_b = st.columns(2)
 
 with col_a:
-    st.subheader("🏆 Desempenho por Transportadora")
+    st.subheader("Desempenho por Transportadora")
     fig_carrier = go.Figure()
     fig_carrier.add_trace(go.Bar(
         x=carrier_perf["carrier"],
@@ -230,8 +238,11 @@ with col_a:
     st.plotly_chart(fig_carrier, use_container_width=True)
 
 with col_b:
-    st.subheader("📊 Volume por Região")
-    regiao_counts = pd.concat([orders["origin_city"], orders["dest_city"]], ignore_index=True).value_counts().reset_index()
+    st.subheader("Volume por Região")
+    regiao_counts = pd.concat(
+        [orders["origin_city"], orders["dest_city"]],
+        ignore_index=True
+    ).value_counts().reset_index()
     regiao_counts.columns = ["regiao", "count"]
 
     fig_regiao = px.bar(
@@ -254,7 +265,7 @@ with col_b:
 st.divider()
 
 # ── Receita ─────────────────────────────────────────────────────────────────
-st.subheader("💵 Receita Operacional Diária (R$)")
+st.subheader("Receita Operacional Diária (R$)")
 avg_rev = daily_df["revenue"].mean()
 
 fig_rev = go.Figure(go.Bar(
@@ -284,7 +295,10 @@ st.subheader("🗒️ Listagem de Pedidos")
 
 col_s1, col_s2 = st.columns([3, 1])
 with col_s1:
-    search = st.text_input("🔍 Buscar por ID, Origem ou Destino", placeholder="Ex: PED-301, Sudeste...")
+    search = st.text_input(
+        "Buscar por ID, Origem ou Destino",
+        placeholder="Ex: PED-301, Sudeste..."
+    )
 with col_s2:
     sort_col = st.selectbox("Ordenar por", ["created_at", "value_brl", "weight_kg"], index=0)
 
@@ -326,11 +340,11 @@ st.caption(f"Exibindo até {len(display_df)} pedidos filtrados")
 st.divider()
 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 with col_f1:
-    st.metric("⏳ Aguardando Coleta", aguardando)
+    st.metric("Aguardando Coleta", aguardando)
 with col_f2:
-    st.metric("🧾 Ticket Médio", format_brl(ticket_medio))
+    st.metric("Ticket Médio", format_brl(ticket_medio))
 with col_f3:
-    st.metric("🔄 Taxa de Devolução", f"{(devolvidos / total * 100):.1f}%" if total > 0 else "0%")
+    st.metric("Taxa de Devolução", f"{(devolvidos / total * 100):.1f}%" if total > 0 else "0%")
 with col_f4:
     best_carrier = carrier_perf.loc[carrier_perf["on_time_rate"].idxmax(), "carrier"] if len(carrier_perf) > 0 else "—"
-    st.metric("🥇 Melhor Transportadora", best_carrier)
+    st.metric("Melhor Transportadora", best_carrier)
